@@ -1,0 +1,1912 @@
+# 00Vue 3 编程主要知识点梳理
+
+> **从入门到精通，全面掌握 Vue 3 核心技术**
+> 
+> Vue 3.4+ | Composition API | TypeScript
+
+---
+
+## 目录
+
+- [第一章 Vue 3 概述与核心特性](#第一章-vue-3-概述与核心特性)
+- [第二章 组合式 API 详解](#第二章-组合式-api-详解)
+- [第三章 模板语法与指令](#第三章-模板语法与指令)
+- [第四章 计算属性与侦听器](#第四章-计算属性与侦听器)
+- [第五章 组件系统](#第五章-组件系统)
+- [第六章 组合式函数](#第六章-组合式函数)
+- [第七章 Vue Router 路由管理](#第七章-vue-router-路由管理)
+- [第八章 Pinia 状态管理](#第八章-pinia-状态管理)
+- [第九章 TypeScript 支持](#第九章-typescript-支持)
+- [第十章 性能优化](#第十章-性能优化)
+- [第十一章 工具链与生态](#第十一章-工具链与生态)
+
+---
+
+# 第一章 Vue 3 概述与核心特性
+
+## 1.1 Vue 3 的诞生背景
+
+Vue.js 是一款渐进式 JavaScript 框架，由**尤雨溪（Evan You）**于 2014 年创建。Vue 3 是 Vue.js 的第三个主要版本，于 **2020 年 9 月**正式发布。
+
+Vue 3 的开发历时两年多，期间经历了大量的重构和优化。相比 Vue 2，Vue 3 在性能、TypeScript 支持、代码组织方式等方面都有了质的飞跃。Vue 3 采用了全新的响应式系统，使用 `Proxy` 替代了 `Object.defineProperty`，解决了 Vue 2 中无法检测对象属性新增/删除、数组索引变化等问题。
+
+## 1.2 核心特性概览
+
+Vue 3 引入了多项激动人心的新特性：
+
+| 特性 | 说明 |
+|------|------|
+| **组合式 API（Composition API）** | 允许将相关功能的代码组织在一起，而不是按照选项分散组织 |
+| **性能提升** | 渲染性能提升约 1.3 到 2 倍，包体积减小约 41%（从 23KB 减小到 14KB，gzip 压缩后） |
+| **更好的 TypeScript 支持** | 从一开始使用 TypeScript 重写，提供更好的类型推断 |
+| **Teleport 组件** | 允许将模板内容渲染到 DOM 中的其他位置 |
+| **Suspense 组件** | 用于在异步依赖解析时显示备用内容 |
+| **Fragments（片段）** | 支持组件拥有多个根节点 |
+| **全局 API 修改** | `createApp` 函数替代了 Vue 构造函数 |
+
+## 1.3 创建 Vue 3 应用
+
+使用 Vite 创建 Vue 3 项目：
+
+```bash
+npm create vue@latest my-vue-app
+cd my-vue-app
+npm install
+npm run dev
+```
+
+创建 Vue 应用实例：
+
+```javascript
+import { createApp } from 'vue'
+import App from './App.vue'
+
+const app = createApp(App)
+app.mount('#app')
+```
+
+---
+
+# 第二章 组合式 API 详解
+
+## 2.1 setup 函数
+
+`setup` 函数是组合式 API 的入口点，接收两个参数：`props` 和 `context`。
+
+```javascript
+export default {
+  setup(props, context) {
+    // props: 组件接收的属性
+    // context: 上下文对象，包含 attrs、slots、emit 等
+    console.log(props.title)
+    console.log(context.attrs)
+    console.log(context.slots)
+    context.emit('customEvent', data)
+
+    return {
+      // 返回的对象中的属性可以在模板中使用
+    }
+  }
+}
+```
+
+在 Vue 3.2+ 版本中，可以使用 `<script setup>` 语法糖：
+
+```vue
+<script setup>
+// 这里的代码等同于 setup 函数的内容
+const count = ref(0)
+const increment = () => count.value++
+</script>
+```
+
+## 2.2 响应式 API
+
+### 2.2.1 ref 函数
+
+```javascript
+import { ref } from 'vue'
+
+const count = ref(0)
+console.log(count.value) // 0
+count.value++
+console.log(count.value) // 1
+```
+
+### 2.2.2 reactive 函数
+
+```javascript
+import { reactive } from 'vue'
+
+const state = reactive({
+  count: 0,
+  name: 'Vue'
+})
+
+console.log(state.count) // 0
+state.count++
+console.log(state.count) // 1
+```
+
+**ref 和 reactive 的选择建议：**
+
+- **使用 ref 的场景**：需要包装基本类型；需要重新赋值整个对象
+- **使用 reactive 的场景**：需要创建包含多个属性的响应式状态对象；对象结构复杂时
+
+### 2.2.3 computed 计算属性
+
+```javascript
+import { ref, computed } from 'vue'
+
+const firstName = ref('John')
+const lastName = ref('Doe')
+
+// 只读计算属性
+const fullName = computed(() => {
+  return firstName.value + ' ' + lastName.value
+})
+
+// 可写计算属性
+const fullNameWritable = computed({
+  get() {
+    return firstName.value + ' ' + lastName.value
+  },
+  set(newValue) {
+    [firstName.value, lastName.value] = newValue.split(' ')
+  }
+})
+```
+
+### 2.2.4 watch 侦听器
+
+```javascript
+import { ref, watch } from 'vue'
+
+const count = ref(0)
+const name = ref('Vue')
+
+// 侦听单个数据源
+watch(count, (newVal, oldVal) => {
+  console.log('count 变化:', oldVal, '->', newVal)
+})
+
+// 侦听多个数据源
+watch([count, name], ([newCount, newName], [oldCount, oldName]) => {
+  console.log('数据发生变化')
+})
+
+// 立即执行和深度侦听
+watch(
+  () => state.nested,
+  (newVal, oldVal) => {
+    console.log('嵌套对象变化')
+  },
+  { immediate: true, deep: true }
+)
+```
+
+### 2.2.5 watchEffect 函数
+
+```javascript
+import { ref, watchEffect } from 'vue'
+
+const count = ref(0)
+const name = ref('Vue')
+
+watchEffect(() => {
+  // 自动追踪 count 和 name 的变化
+  console.log('count:', count.value)
+  console.log('name:', name.value)
+})
+
+// 停止侦听
+const stop = watchEffect(() => { 
+  // ... 
+})
+stop() // 停止侦听
+```
+
+## 2.3 生命周期钩子
+
+```javascript
+import { 
+  onBeforeMount, 
+  onMounted, 
+  onBeforeUpdate, 
+  onUpdated,
+  onBeforeUnmount, 
+  onUnmounted, 
+  onErrorCaptured 
+} from 'vue'
+
+export default {
+  setup() {
+    onBeforeMount(() => {
+      console.log('组件挂载前')
+    })
+
+    onMounted(() => {
+      console.log('组件已挂载')
+    })
+
+    onBeforeUpdate(() => {
+      console.log('组件更新前')
+    })
+
+    onUpdated(() => {
+      console.log('组件已更新')
+    })
+
+    onBeforeUnmount(() => {
+      console.log('组件卸载前')
+    })
+
+    onUnmounted(() => {
+      console.log('组件已卸载')
+    })
+  }
+}
+```
+
+**Vue 2 与 Vue 3 生命周期钩子的对应关系：**
+
+| Vue 2 Options API | Vue 3 Composition API |
+|-------------------|----------------------|
+| beforeCreate | setup() |
+| created | setup() |
+| beforeMount | onBeforeMount |
+| mounted | onMounted |
+| beforeUpdate | onBeforeUpdate |
+| updated | onUpdated |
+| beforeDestroy | onBeforeUnmount |
+| destroyed | onUnmounted |
+| errorCaptured | onErrorCaptured |
+
+---
+
+# 第三章 模板语法与指令
+
+## 3.1 模板语法基础
+
+### 3.1.1 文本插值
+
+```vue
+<span>Message: {{ msg }}</span>
+```
+
+### 3.1.2 属性绑定
+
+```vue
+<!-- 完整语法 -->
+<div v-bind:id="dynamicId"></div>
+
+<!-- 简写 -->
+<div :id="dynamicId"></div>
+```
+
+### 3.1.3 事件监听
+
+```vue
+<!-- 完整语法 -->
+<button v-on:click="increment"></button>
+
+<!-- 简写 -->
+<button @click="increment"></button>
+
+<!-- 内联事件处理器 -->
+<button @click="count++"></button>
+
+<!-- 访问事件对象 -->
+<button @click="handleClick($event)"></button>
+```
+
+### 3.1.4 条件渲染
+
+```vue
+<h1 v-if="awesome">Vue is awesome!</h1>
+<h1 v-else>Oh no</h1>
+
+<!-- v-else-if -->
+<div v-if="type === 'A'">A</div>
+<div v-else-if="type === 'B'">B</div>
+<div v-else-if="type === 'C'">C</div>
+<div v-else>Not A/B/C</div>
+
+<!-- v-show -->
+<h1 v-show="ok">Hello!</h1>
+```
+
+**v-if vs v-show 的选择：**
+
+- **v-if**：真正的条件渲染，切换时组件会被销毁和重建。适用于运行时条件很少改变的场景
+- **v-show**：只是简单的 CSS 切换，初始渲染开销更高，但切换开销更低。适用于需要频繁切换的场景
+
+### 3.1.5 列表渲染
+
+```vue
+<ul>
+  <li v-for="item in items" :key="item.id">
+    {{ item.text }}
+  </li>
+</ul>
+
+<!-- 带索引 -->
+<li v-for="(item, index) in items">
+  {{ index }} - {{ item.text }}
+</li>
+
+<!-- 遍历对象 -->
+<li v-for="(value, key, index) in myObject">
+  {{ index }}. {{ key }}: {{ value }}
+</li>
+
+<!-- 遍历数字 -->
+<span v-for="n in 10">{{ n }}</span>
+```
+
+## 3.2 内置指令
+
+| 指令 | 说明 |
+|------|------|
+| `v-bind` | 动态绑定一个或多个属性，或一个组件 prop 到表达式 |
+| `v-on` | 绑定事件监听器 |
+| `v-model` | 在表单元素或组件上创建双向绑定 |
+| `v-if` / `v-else` | 条件渲染元素或模板块 |
+| `v-show` | 根据条件切换元素的 display 属性 |
+| `v-for` | 基于数据多次渲染元素或模板块 |
+| `v-text` | 更新元素的 textContent |
+| `v-html` | 更新元素的 innerHTML |
+| `v-slot` | 声明插槽以接收子组件传递的内容 |
+| `v-pre` | 跳过这个元素和它的所有子元素的编译过程 |
+| `v-once` | 只渲染元素和组件一次 |
+| `v-memo` | 缓存一个子树 |
+
+### 3.2.1 v-model 双向绑定
+
+```vue
+<!-- 文本 -->
+<input v-model="message" placeholder="edit me">
+<p>Message is: {{ message }}</p>
+
+<!-- 多行文本 -->
+<textarea v-model="message"></textarea>
+
+<!-- 复选框 -->
+<input type="checkbox" id="checkbox" v-model="checked">
+<label for="checkbox">{{ checked }}</label>
+
+<!-- 单选按钮 -->
+<input type="radio" id="one" value="One" v-model="picked">
+<input type="radio" id="two" value="Two" v-model="picked">
+
+<!-- 选择器 -->
+<select v-model="selected">
+  <option disabled value="">Please select one</option>
+  <option>A</option>
+  <option>B</option>
+</select>
+```
+
+### 3.2.2 修饰符
+
+```vue
+<!-- .lazy: 在 change 事件后同步，而不是 input 事件 -->
+<input v-model.lazy="msg">
+
+<!-- .number: 自动将输入转为数字 -->
+<input v-model.number="age" type="number">
+
+<!-- .trim: 自动去除输入内容的首尾空格 -->
+<input v-model.trim="msg">
+
+<!-- 事件修饰符 -->
+<!-- .stop: 阻止事件冒泡 -->
+<a @click.stop="doThis"></a>
+
+<!-- .prevent: 阻止默认行为 -->
+<form @submit.prevent="onSubmit"></form>
+
+<!-- .capture: 使用捕获模式 -->
+<div @click.capture="doThis">...</div>
+
+<!-- .once: 只触发一次 -->
+<div @click.once="doThis">...</div>
+
+<!-- .enter, .tab, .delete, .esc 等: 按键修饰符 -->
+<input @keyup.enter="submit">
+```
+
+---
+
+# 第四章 计算属性与侦听器
+
+## 4.1 计算属性 computed
+
+```vue
+<script setup>
+import { ref, computed } from 'vue'
+
+const firstName = ref('John')
+const lastName = ref('Doe')
+
+// 只读计算属性
+const fullName = computed(() => {
+  return firstName.value + ' ' + lastName.value
+})
+
+// 可写计算属性
+const fullNameWritable = computed({
+  get() {
+    return firstName.value + ' ' + lastName.value
+  },
+  set(newValue) {
+    [firstName.value, lastName.value] = newValue.split(' ')
+  }
+})
+</script>
+
+<template>
+  <p>Full name: {{ fullName }}</p>
+  <input v-model="fullNameWritable">
+</template>
+```
+
+**计算属性 vs 方法的区别：**
+
+- **计算属性**：基于依赖缓存，依赖不变时不会重新计算；适合用于复杂的逻辑计算；在模板中使用时不带括号
+- **方法**：每次调用都会执行；适合用于需要触发副作用的场景；在模板中使用时需要带括号
+
+## 4.2 侦听器 watch
+
+```vue
+<script setup>
+import { ref, watch } from 'vue'
+
+const question = ref('')
+const answer = ref('Questions usually contain a question mark. ;-)')
+
+// 侦听 question 的变化
+watch(question, async (newQuestion, oldQuestion) => {
+  if (newQuestion.includes('?')) {
+    answer.value = 'Thinking...'
+    try {
+      const res = await fetch('https://yesno.wtf/api')
+      answer.value = (await res.json()).answer
+    } catch (error) {
+      answer.value = 'Error! Could not reach the API.'
+    }
+  }
+})
+</script>
+```
+
+## 4.3 watch vs watchEffect
+
+| 特性 | watch | watchEffect |
+|------|-------|-------------|
+| 依赖追踪 | 显式指定 | 自动追踪 |
+| 立即执行 | 默认不执行 | 立即执行 |
+| 旧值访问 | 可以访问 | 不可访问 |
+| 适用场景 | 需要精确控制依赖时 | 需要自动追踪依赖时 |
+
+```javascript
+// watchEffect: 自动追踪依赖
+watchEffect(() => {
+  // 自动追踪 count 和 name 的变化
+  console.log(count.value)
+  console.log(name.value)
+})
+
+// watch: 显式指定侦听源
+watch(count, (newVal, oldVal) => {
+  console.log('count 变化:', oldVal, '->', newVal)
+})
+
+// 停止侦听
+const stop = watchEffect(() => { 
+  // ... 
+})
+stop() // 调用停止函数
+```
+
+侦听器的配置选项：
+
+```javascript
+watch(source, callback, {
+  immediate: true,  // 立即执行回调
+  deep: true,       // 深度侦听
+  flush: 'post'     // 回调触发时机: 'pre'(默认), 'post', 'sync'
+})
+```
+
+---
+
+# 第五章 组件系统
+
+## 5.1 组件注册与使用
+
+### 5.1.1 全局注册
+
+```javascript
+import { createApp } from 'vue'
+import App from './App.vue'
+import MyComponent from './MyComponent.vue'
+
+const app = createApp(App)
+
+// 全局注册
+app.component('MyComponent', MyComponent)
+
+// 或者链式调用
+app
+  .component('ComponentA', ComponentA)
+  .component('ComponentB', ComponentB)
+
+app.mount('#app')
+```
+
+### 5.1.2 局部注册
+
+```vue
+<script setup>
+import ComponentA from './ComponentA.vue'
+import ComponentB from './ComponentB.vue'
+</script>
+
+<template>
+  <ComponentA />
+  <ComponentB />
+</template>
+```
+
+### 5.1.3 动态组件
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import Home from './Home.vue'
+import Posts from './Posts.vue'
+import Archive from './Archive.vue'
+
+const currentTab = ref('Home')
+const tabs = {
+  Home,
+  Posts,
+  Archive
+}
+</script>
+
+<template>
+  <button 
+    v-for="(_, tab) in tabs" 
+    :key="tab"
+    :class="['tab-button', { active: currentTab === tab }]"
+    @click="currentTab = tab"
+  >
+    {{ tab }}
+  </button>
+  <component :is="tabs[currentTab]"></component>
+</template>
+```
+
+## 5.2 Props 与事件
+
+### 5.2.1 Props 声明
+
+```vue
+<script setup>
+// 使用数组声明
+const props = defineProps(['foo'])
+console.log(props.foo)
+
+// 使用类型声明
+const props = defineProps({
+  title: String,
+  likes: Number,
+  isPublished: Boolean,
+  commentIds: Array,
+  author: Object,
+  callback: Function
+})
+
+// 带有默认值
+const props = defineProps({
+  title: {
+    type: String,
+    required: true,
+    default: 'Hello'
+  },
+  likes: {
+    type: Number,
+    default: 0
+  }
+})
+</script>
+```
+
+### 5.2.2 事件声明
+
+```vue
+<script setup>
+// 声明要触发的事件
+const emit = defineEmits(['inFocus', 'submit'])
+
+// 触发事件
+function buttonClick() {
+  emit('submit', { 
+    email: 'test@example.com', 
+    password: '123456' 
+  })
+}
+
+// 带校验的事件声明
+const emit = defineEmits({
+  submit: ({ email, password }) => {
+    if (email && password) {
+      return true
+    } else {
+      console.warn('Invalid submit event payload!')
+      return false
+    }
+  }
+})
+</script>
+```
+
+### 5.2.3 v-model 在组件上的使用
+
+```vue
+<!-- 父组件 -->
+<CustomInput v-model="searchText" />
+
+<!-- 等价于 -->
+<CustomInput 
+  :modelValue="searchText"
+  @update:modelValue="newValue => searchText = newValue" 
+/>
+
+<!-- 子组件 -->
+<script setup>
+defineProps(['modelValue'])
+defineEmits(['update:modelValue'])
+</script>
+
+<template>
+  <input 
+    :value="modelValue"
+    @input="$emit('update:modelValue', $event.target.value)"
+  />
+</template>
+
+<!-- 多个 v-model -->
+<UserName v-model:first-name="first" v-model:last-name="last" />
+```
+
+## 5.3 插槽系统
+
+### 5.3.1 默认插槽
+
+```vue
+<!-- 子组件: BaseLayout.vue -->
+<template>
+  <div class="container">
+    <header>
+      <slot>默认内容</slot>
+    </header>
+  </div>
+</template>
+
+<!-- 父组件 -->
+<BaseLayout>
+  <template v-slot:default>
+    这是插入的内容
+  </template>
+  <!-- 简写 -->
+  这是插入的内容
+</BaseLayout>
+```
+
+### 5.3.2 具名插槽
+
+```vue
+<!-- 子组件 -->
+<template>
+  <div class="container">
+    <header>
+      <slot name="header"></slot>
+    </header>
+    <main>
+      <slot></slot>
+    </main>
+    <footer>
+      <slot name="footer"></slot>
+    </footer>
+  </div>
+</template>
+
+<!-- 父组件 -->
+<BaseLayout>
+  <template #header>
+    <h1>这里是页头</h1>
+  </template>
+
+  <p>主要内容</p>
+
+  <template #footer>
+    <p>这里是页脚</p>
+  </template>
+</BaseLayout>
+```
+
+### 5.3.3 作用域插槽
+
+```vue
+<!-- 子组件: MyComponent.vue -->
+<script setup>
+import { ref } from 'vue'
+const greetingMessage = ref('hello')
+</script>
+
+<template>
+  <slot :text="greetingMessage" :count="1"></slot>
+</template>
+
+<!-- 父组件 -->
+<MyComponent v-slot="slotProps">
+  {{ slotProps.text }} {{ slotProps.count }}
+</MyComponent>
+
+<!-- 解构写法 -->
+<MyComponent v-slot="{ text, count }">
+  {{ text }} {{ count }}
+</MyComponent>
+```
+
+---
+
+# 第六章 组合式函数
+
+## 6.1 什么是组合式函数
+
+```javascript
+// useMouse.js
+import { ref, onMounted, onUnmounted } from 'vue'
+
+export function useMouse() {
+  const x = ref(0)
+  const y = ref(0)
+
+  function update(event) {
+    x.value = event.pageX
+    y.value = event.pageY
+  }
+
+  onMounted(() => window.addEventListener('mousemove', update))
+  onUnmounted(() => window.removeEventListener('mousemove', update))
+
+  return { x, y }
+}
+```
+
+在组件中使用：
+
+```vue
+<script setup>
+import { useMouse } from './useMouse'
+
+const { x, y } = useMouse()
+</script>
+
+<template>
+  Mouse: {{ x }}, {{ y }}
+</template>
+```
+
+## 6.2 常用的组合式函数示例
+
+### 6.3.1 useFetch - 数据获取
+
+```javascript
+// useFetch.js
+import { ref, watchEffect, toValue } from 'vue'
+
+export function useFetch(url) {
+  const data = ref(null)
+  const error = ref(null)
+  const isPending = ref(false)
+
+  watchEffect(async () => {
+    isPending.value = true
+    data.value = null
+    error.value = null
+
+    try {
+      const res = await fetch(toValue(url))
+      data.value = await res.json()
+    } catch (e) {
+      error.value = e
+    } finally {
+      isPending.value = false
+    }
+  })
+
+  return { data, error, isPending }
+}
+```
+
+### 6.3.2 useLocalStorage - 本地存储
+
+```javascript
+// useLocalStorage.js
+import { ref, watch } from 'vue'
+
+export function useLocalStorage(key, defaultValue) {
+  const stored = localStorage.getItem(key)
+  const data = ref(stored ? JSON.parse(stored) : defaultValue)
+
+  watch(data, (newValue) => {
+    localStorage.setItem(key, JSON.stringify(newValue))
+  }, { deep: true })
+
+  return data
+}
+```
+
+### 6.3.3 useCounter - 计数器
+
+```javascript
+// useCounter.js
+import { ref, computed } from 'vue'
+
+export function useCounter(initialValue = 0) {
+  const count = ref(initialValue)
+  const double = computed(() => count.value * 2)
+
+  function increment() {
+    count.value++
+  }
+
+  function decrement() {
+    count.value--
+  }
+
+  function reset() {
+    count.value = initialValue
+  }
+
+  return { count, double, increment, decrement, reset }
+}
+```
+
+## 6.4 组合式函数的最佳实践
+
+- **单一职责**：每个组合式函数应该只关注一个功能点
+- **参数设计**：合理设计参数，使用对象参数来支持可选配置
+- **返回值设计**：返回一个对象，包含需要暴露给组件的状态和方法
+- **副作用处理**：在组合式函数中使用生命周期钩子来管理副作用
+- **TypeScript 支持**：为组合式函数添加类型定义
+
+---
+
+# 第七章 Vue Router 路由管理
+
+## 7.1 安装与基本配置
+
+```bash
+# 安装 Vue Router
+npm install vue-router@4
+```
+
+创建路由配置：
+
+```javascript
+// router/index.js
+import { createRouter, createWebHistory } from 'vue-router'
+import Home from '../views/Home.vue'
+import About from '../views/About.vue'
+
+const routes = [
+  { path: '/', name: 'Home', component: Home },
+  { path: '/about', name: 'About', component: About }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+export default router
+```
+
+在主文件中使用：
+
+```javascript
+import { createApp } from 'vue'
+import App from './App.vue'
+import router from './router'
+
+const app = createApp(App)
+app.use(router)
+app.mount('#app')
+```
+
+## 7.2 路由模式
+
+- **createWebHistory()**：使用 HTML5 History API，URL 没有 # 号。需要服务器配置支持
+- **createWebHashHistory()**：使用 URL 的 hash 部分，不需要服务器配置
+
+## 7.3 路由配置详解
+
+### 7.3.1 动态路由
+
+```javascript
+const routes = [
+  // 匹配 /user/123
+  { 
+    path: '/user/:id', 
+    component: User,
+    // 可选参数 /user 或 /user/123
+    path: '/user/:id?' 
+  },
+  // 匹配多个参数 /user/123/posts/456
+  { 
+    path: '/user/:userId/posts/:postId', 
+    component: UserPost 
+  }
+]
+```
+
+在组件中获取路由参数：
+
+```vue
+<script setup>
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+console.log(route.params.id)
+</script>
+```
+
+### 7.3.2 嵌套路由
+
+```javascript
+const routes = [
+  {
+    path: '/user/:id',
+    component: User,
+    children: [
+      {
+        // /user/:id/profile
+        path: 'profile',
+        component: UserProfile
+      },
+      {
+        // /user/:id/posts
+        path: 'posts',
+        component: UserPosts
+      },
+      {
+        // /user/:id 的默认子路由
+        path: '',
+        component: UserHome
+      }
+    ]
+  }
+]
+```
+
+### 7.3.3 命名路由
+
+```javascript
+const routes = [
+  { 
+    path: '/user/:id', 
+    name: 'user', 
+    component: User 
+  }
+]
+```
+
+使用命名路由导航：
+
+```vue
+<!-- 使用命名路由导航 -->
+<router-link :to="{ name: 'user', params: { id: 123 } }">
+  User
+</router-link>
+```
+
+```javascript
+// 编程式导航
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+router.push({ name: 'user', params: { id: 123 } })
+```
+
+## 7.4 导航守卫
+
+```javascript
+// 全局前置守卫
+router.beforeEach((to, from, next) => {
+  // to: 即将进入的路由
+  // from: 当前导航正要离开的路由
+  // next: 必须调用该方法来解决这个钩子
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next({ name: 'Login' })
+  } else {
+    next()
+  }
+})
+
+// 全局解析守卫
+router.beforeResolve(async (to) => {
+  if (to.meta.requiresData) {
+    await fetchData()
+  }
+})
+
+// 全局后置钩子
+router.afterEach((to, from) => {
+  document.title = to.meta.title || 'Default Title'
+})
+```
+
+路由独享的守卫和组件内的守卫：
+
+```javascript
+// 路由独享的守卫
+const routes = [
+  {
+    path: '/admin',
+    component: Admin,
+    beforeEnter: (to, from) => {
+      // 返回 false 取消导航
+      // 返回路由对象重定向
+      return isAdmin ? true : { name: 'Login' }
+    }
+  }
+]
+```
+
+```vue
+<!-- 组件内的守卫 -->
+<script setup>
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
+
+onBeforeRouteLeave((to, from) => {
+  const answer = window.confirm('Do you really want to leave?')
+  if (!answer) return false
+})
+
+onBeforeRouteUpdate(async (to) => {
+  // 在当前路由改变，但是该组件被复用时调用
+  userData.value = await fetchUser(to.params.id)
+})
+</script>
+```
+
+## 7.5 路由元信息
+
+```javascript
+const routes = [
+  {
+    path: '/posts',
+    component: Posts,
+    meta: {
+      requiresAuth: true,
+      title: 'Posts Page',
+      layout: 'default'
+    }
+  }
+]
+
+// 在导航守卫中访问
+router.beforeEach((to, from) => {
+  if (to.meta.requiresAuth) {
+    // 需要认证
+  }
+})
+```
+
+---
+
+# 第八章 Pinia 状态管理
+
+## 8.1 安装与配置
+
+```bash
+# 安装 Pinia
+npm install pinia
+```
+
+```javascript
+// 在 main.js 中配置
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import App from './App.vue'
+
+const app = createApp(App)
+app.use(createPinia())
+app.mount('#app')
+```
+
+## 8.2 定义 Store
+
+```javascript
+// stores/counter.js
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+// 使用组合式 API 风格
+export const useCounterStore = defineStore('counter', () => {
+  // state
+  const count = ref(0)
+  const name = ref('Eduardo')
+
+  // getters
+  const doubleCount = computed(() => count.value * 2)
+
+  // actions
+  function increment() {
+    count.value++
+  }
+
+  function decrement() {
+    count.value--
+  }
+
+  return { count, name, doubleCount, increment, decrement }
+})
+
+// 或者使用 Option 风格（类似 Vuex）
+export const useCounterStore = defineStore('counter', {
+  state: () => ({ 
+    count: 0, 
+    name: 'Eduardo' 
+  }),
+  getters: {
+    doubleCount: (state) => state.count * 2
+  },
+  actions: {
+    increment() {
+      this.count++
+    }
+  }
+})
+```
+
+## 8.3 使用 Store
+
+```vue
+<script setup>
+import { useCounterStore } from '@/stores/counter'
+import { storeToRefs } from 'pinia'
+
+const counter = useCounterStore()
+
+// 使用 storeToRefs 保持响应式
+const { count, doubleCount } = storeToRefs(counter)
+
+// 方法可以直接解构
+const { increment } = counter
+</script>
+
+<template>
+  <div>
+    <p>Count: {{ count }}</p>
+    <p>Double: {{ doubleCount }}</p>
+    <button @click="increment">Increment</button>
+    <button @click="counter.increment()">Increment</button>
+    <!-- 直接修改 state -->
+    <button @click="counter.count++">Direct Increment</button>
+  </div>
+</template>
+```
+
+## 8.4 State 操作
+
+```javascript
+const store = useCounterStore()
+
+// 直接修改
+store.count++
+
+// 批量修改 - 使用 $patch
+store.$patch({
+  count: store.count + 1,
+  name: 'Abalam'
+})
+
+// 使用函数式 $patch
+store.$patch((state) => {
+  state.count++
+  state.name = 'Abalam'
+})
+
+// 替换整个 state
+store.$state = { count: 24, name: 'Paimon' }
+
+// 重置 state
+store.$reset()
+```
+
+## 8.5 Getters
+
+```javascript
+export const useStore = defineStore('main', {
+  state: () => ({
+    users: [{ name: 'John' }, { name: 'Jane' }]
+  }),
+  getters: {
+    // 接收 state 作为参数
+    userCount: (state) => state.users.length,
+
+    // 使用 this 访问其他 getters
+    getUserById: (state) => {
+      return (userId) => state.users.find((user) => user.id === userId)
+    },
+
+    // 访问其他 store 的 getters
+    otherGetter(state) {
+      const otherStore = useOtherStore()
+      return state.users.length + otherStore.items.length
+    }
+  }
+})
+```
+
+## 8.6 Actions
+
+```javascript
+export const useStore = defineStore('main', {
+  state: () => ({
+    userData: null
+  }),
+  actions: {
+    // 同步 action
+    setUserData(data) {
+      this.userData = data
+    },
+
+    // 异步 action
+    async fetchUser(userId) {
+      try {
+        const response = await fetch(`/api/users/${userId}`)
+        this.userData = await response.json()
+      } catch (error) {
+        console.error('Failed to fetch user:', error)
+      }
+    },
+
+    // 调用其他 action
+    async registerUser(formData) {
+      await this.createUser(formData)
+      await this.sendWelcomeEmail()
+    }
+  }
+})
+```
+
+## 8.7 Store 之间的交互
+
+```javascript
+// stores/user.js
+import { defineStore } from 'pinia'
+import { useCartStore } from './cart'
+
+export const useUserStore = defineStore('user', {
+  state: () => ({
+    user: null
+  }),
+  actions: {
+    async fetchUser() {
+      // 访问其他 store
+      const cart = useCartStore()
+
+      // 使用其他 store 的数据或方法
+      if (cart.items.length > 0) {
+        console.log('User has items in cart')
+      }
+
+      // 调用其他 store 的 action
+      await cart.saveForLater()
+    }
+  }
+})
+```
+
+## 8.8 插件与持久化
+
+```javascript
+// stores/plugins/persist.js
+import { toRaw } from 'vue'
+
+export function persistPlugin({ store }) {
+  // 从 localStorage 恢复状态
+  const stored = localStorage.getItem(store.$id)
+  if (stored) {
+    store.$patch(JSON.parse(stored))
+  }
+
+  // 订阅 state 变化
+  store.$subscribe((mutation, state) => {
+    localStorage.setItem(store.$id, JSON.stringify(toRaw(state)))
+  })
+}
+
+// 在 main.js 中使用插件
+import { createPinia } from 'pinia'
+import { persistPlugin } from './stores/plugins/persist'
+
+const pinia = createPinia()
+pinia.use(persistPlugin)
+```
+
+---
+
+# 第九章 TypeScript 支持
+
+## 9.1 创建 TypeScript 项目
+
+```bash
+npm create vue@latest
+# 按照提示选择 TypeScript 支持
+cd <project-name>
+npm install
+npm run dev
+```
+
+## 9.2 组件中的 TypeScript
+
+### 9.2.1 `<script setup>` 与 TypeScript
+
+```vue
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+
+// 自动类型推断
+const count = ref(0)           // Ref<number>
+const message = ref('Hello')   // Ref<string>
+
+// 显式类型注解
+interface User {
+  id: number
+  name: string
+  email?: string
+}
+
+const user = ref<User>({
+  id: 1,
+  name: 'John'
+})
+
+// 计算属性
+const doubleCount = computed<number>(() => count.value * 2)
+
+// 函数
+function increment(): void {
+  count.value++
+}
+
+function greet(name: string): string {
+  return `Hello, ${name}!`
+}
+</script>
+```
+
+### 9.2.2 Props 类型定义
+
+```vue
+<script setup lang="ts">
+// 使用类型字面量
+const props = defineProps<{
+  title: string
+  count?: number
+  items: string[]
+  callback: (id: number) => void
+}>()
+
+// 使用接口
+interface Props {
+  title: string
+  count?: number
+  user: User
+}
+
+const props = defineProps<Props>()
+
+// 带默认值的 props
+const props = withDefaults(defineProps<Props>(), {
+  count: 0,
+  title: 'Default Title'
+})
+</script>
+```
+
+### 9.2.3 Emits 类型定义
+
+```vue
+<script setup lang="ts">
+// 类型安全的 emits
+const emit = defineEmits<{
+  (e: 'change', id: number): void
+  (e: 'update', value: string): void
+  (e: 'delete', item: { id: number; name: string }): boolean
+}>()
+
+// 使用
+emit('change', 123)           // 类型检查
+emit('update', 'new value')
+</script>
+```
+
+## 9.3 组合式函数的 TypeScript
+
+```typescript
+// useFetch.ts
+import { ref, watchEffect, toValue } from 'vue'
+import type { Ref } from 'vue'
+
+interface UseFetchOptions {
+  immediate?: boolean
+  onError?: (error: Error) => void
+}
+
+interface UseFetchReturn<T> {
+  data: Ref<T | null>
+  error: Ref<Error | null>
+  isPending: Ref<boolean>
+  execute: () => Promise<void>
+}
+
+export function useFetch<T>(
+  url: string | Ref<string>,
+  options: UseFetchOptions = {}
+): UseFetchReturn<T> {
+  const { immediate = true } = options
+
+  const data = ref<T | null>(null)
+  const error = ref<Error | null>(null)
+  const isPending = ref(false)
+
+  async function execute() {
+    isPending.value = true
+    error.value = null
+
+    try {
+      const res = await fetch(toValue(url))
+      data.value = await res.json()
+    } catch (e) {
+      error.value = e as Error
+      options.onError?.(e as Error)
+    } finally {
+      isPending.value = false
+    }
+  }
+
+  if (immediate) {
+    watchEffect(execute)
+  }
+
+  return {
+    data: data as Ref<T | null>,
+    error: error as Ref<Error | null>,
+    isPending,
+    execute
+  }
+}
+
+// 使用
+const { data, error, isPending } = useFetch<User[]>('/api/users')
+```
+
+## 9.4 Pinia 与 TypeScript
+
+```typescript
+// stores/counter.ts
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useCounterStore = defineStore('counter', () => {
+  // state
+  const count = ref<number>(0)
+  const name = ref<string>('Eduardo')
+
+  // getters
+  const doubleCount = computed<number>(() => count.value * 2)
+
+  // actions
+  function increment(): void {
+    count.value++
+  }
+
+  function decrement(n: number = 1): void {
+    count.value -= n
+  }
+
+  return { count, name, doubleCount, increment, decrement }
+})
+
+// 使用
+import { useCounterStore } from '@/stores/counter'
+
+const counter = useCounterStore()
+counter.increment()
+counter.decrement(5)
+```
+
+## 9.5 Vue Router 与 TypeScript
+
+```typescript
+// router/index.ts
+import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
+import Home from '../views/Home.vue'
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    name: 'Home',
+    component: Home,
+    meta: {
+      requiresAuth: true,
+      title: 'Home Page'
+    }
+  },
+  {
+    path: '/user/:id',
+    name: 'User',
+    component: () => import('../views/User.vue'),
+    props: true
+  }
+]
+
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes
+})
+
+// 类型声明增强
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    title?: string
+  }
+}
+
+export default router
+```
+
+## 9.6 类型声明文件
+
+```typescript
+// types/index.ts
+export interface User {
+  id: number
+  name: string
+  email: string
+  avatar?: string
+  createdAt: Date
+}
+
+export interface Post {
+  id: number
+  title: string
+  content: string
+  author: User
+  published: boolean
+}
+
+export type Theme = 'light' | 'dark' | 'auto'
+
+export interface ApiResponse<T> {
+  data: T
+  message: string
+  status: number
+}
+
+// env.d.ts
+/// <reference types="vite/client" />
+
+declare module '*.vue' {
+  import type { DefineComponent } from 'vue'
+  const component: DefineComponent<{}, {}, any>
+  export default component
+}
+```
+
+---
+
+# 第十章 性能优化
+
+## 10.1 虚拟 DOM 优化
+
+Vue 3 在编译阶段对模板进行了静态提升优化：
+
+- **静态节点提升**：模板中不包含动态绑定的节点会被标记为静态，在渲染时直接复用
+- **PatchFlag 标记**：Vue 3 为动态节点添加了 PatchFlag 标记，在 diff 时只比较标记了动态绑定的部分
+- **事件监听缓存**：内联事件处理器会被缓存，避免每次渲染都创建新的函数
+
+## 10.2 组件优化
+
+### 10.2.1 使用 v-once
+
+```vue
+<!-- 只渲染一次，之后不再更新 -->
+<span v-once>This will never change: {{ msg }}</span>
+
+<!-- 用于组件 -->
+<my-component v-once :comment="msg"></my-component>
+```
+
+### 10.2.2 使用 v-memo
+
+```vue
+<div v-memo="[valueA, valueB]">
+  <!-- 只有当 valueA 或 valueB 变化时才重新渲染 -->
+  <p>{{ valueA }} - {{ valueB }}</p>
+</div>
+```
+
+### 10.2.3 异步组件
+
+```javascript
+import { defineAsyncComponent } from 'vue'
+
+// 基本用法
+const AsyncComp = defineAsyncComponent(() => 
+  import('./components/MyComponent.vue')
+)
+
+// 带选项
+const AsyncCompWithOptions = defineAsyncComponent({
+  // 加载函数
+  loader: () => import('./components/MyComponent.vue'),
+  // 加载异步组件时使用的组件
+  loadingComponent: LoadingComponent,
+  // 加载失败时使用的组件
+  errorComponent: ErrorComponent,
+  // 在显示 loadingComponent 之前的延迟 | 默认值：200（单位 ms）
+  delay: 200,
+  // 如果提供了 timeout，并且加载组件的时间超过了设定值，将显示错误组件
+  timeout: 3000
+})
+```
+
+## 10.3 列表渲染优化
+
+```vue
+<!-- 不推荐 -->
+<div v-for="item in list" :key="item.id" v-if="item.visible">
+  {{ item.name }}
+</div>
+
+<!-- 推荐 -->
+<div v-for="item in visibleList" :key="item.id">
+  {{ item.name }}
+</div>
+
+<script setup>
+import { computed } from 'vue'
+
+const visibleList = computed(() => 
+  list.filter(item => item.visible)
+)
+</script>
+```
+
+## 10.4 响应式优化
+
+```javascript
+import { shallowRef, shallowReactive, toRaw } from 'vue'
+
+// 浅层响应式
+const largeList = shallowRef([...])
+const state = shallowReactive({
+  nested: { /* 不会被深层代理 */ }
+})
+
+// 获取原始对象
+const rawData = toRaw(reactiveData)
+```
+
+## 10.5 构建优化
+
+- **代码分割**：使用动态导入（`import()`）实现路由级别或组件级别的代码分割
+- **Tree Shaking**：确保使用 ES 模块导入，让构建工具能够正确地进行 Tree Shaking
+- **压缩和 Gzip**：启用 Gzip 或 Brotli 压缩，减少传输大小
+- **CDN 部署**：将静态资源部署到 CDN，加快资源加载速度
+
+---
+
+# 第十一章 工具链与生态
+
+## 11.1 构建工具
+
+### 11.1.1 Vite
+
+```bash
+# 创建 Vite 项目
+npm create vite@latest my-vue-app -- --template vue
+
+# 或者使用 TypeScript
+npm create vite@latest my-vue-app -- --template vue-ts
+
+cd my-vue-app
+npm install
+npm run dev
+```
+
+### 11.1.2 Vue CLI
+
+```bash
+# 安装 Vue CLI
+npm install -g @vue/cli
+
+# 创建项目
+vue create my-project
+
+# 使用图形界面
+vue ui
+```
+
+## 11.2 UI 组件库
+
+| 组件库 | 官网 | 特点 |
+|--------|------|------|
+| Element Plus | element-plus.org | 基于 Element UI，功能丰富，适合中后台系统 |
+| Ant Design Vue | antdv.com | 阿里出品，设计规范，适合企业级应用 |
+| Naive UI | naiveui.com | 字节跳动出品，组件精致，文档完善 |
+| Vuetify | vuetifyjs.com | 基于 Material Design，功能强大 |
+| Quasar | quasar.dev | 全功能框架，支持多平台构建 |
+| PrimeVue | primevue.org | 功能全面，主题丰富 |
+
+## 11.3 常用工具库
+
+### 11.3.1 VueUse
+
+```bash
+npm install @vueuse/core
+```
+
+```javascript
+import { useMouse, useLocalStorage, useDark } from '@vueuse/core'
+
+const { x, y } = useMouse()
+const store = useLocalStorage('my-store', { hello: 'hi' })
+const isDark = useDark()
+```
+
+### 11.3.2 Axios 封装
+
+```bash
+npm install axios
+```
+
+```javascript
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  timeout: 10000
+})
+
+// 请求拦截器
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// 响应拦截器
+api.interceptors.response.use(
+  response => response.data,
+  error => {
+    if (error.response?.status === 401) {
+      // 处理未授权
+    }
+    return Promise.reject(error)
+  }
+)
+
+export default api
+```
+
+## 11.4 测试工具
+
+```bash
+# 安装测试工具
+npm install -D vitest @vue/test-utils jsdom
+```
+
+```javascript
+// 组件测试示例
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import Counter from './Counter.vue'
+
+describe('Counter', () => {
+  it('renders properly', () => {
+    const wrapper = mount(Counter, { 
+      props: { initial: 10 } 
+    })
+    expect(wrapper.text()).toContain('10')
+  })
+
+  it('increments when clicked', async () => {
+    const wrapper = mount(Counter)
+    await wrapper.find('button').trigger('click')
+    expect(wrapper.text()).toContain('1')
+  })
+})
+```
+
+## 11.5 代码规范工具
+
+```bash
+# 安装代码规范工具
+npm install -D eslint prettier eslint-plugin-vue
+npm install -D eslint-config-prettier eslint-plugin-prettier
+```
+
+```javascript
+// .eslintrc.js
+module.exports = {
+  env: {
+    browser: true,
+    es2021: true
+  },
+  extends: [
+    'eslint:recommended',
+    'plugin:vue/vue3-recommended',
+    'plugin:@typescript-eslint/recommended',
+    'prettier'
+  ],
+  parser: 'vue-eslint-parser',
+  parserOptions: {
+    parser: '@typescript-eslint/parser'
+  }
+}
+```
+
+## 11.6 部署与 CI/CD
+
+```dockerfile
+# Dockerfile 示例
+
+# 构建阶段
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# 运行阶段
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+---
+
+## 结语
+
+至此，我们已经全面梳理了 Vue 3 编程的主要知识点。从 Vue 3 的核心特性、组合式 API、模板语法，到组件系统、路由管理、状态管理，再到 TypeScript 支持、性能优化和工具链生态，希望这份文档能够帮助你全面掌握 Vue 3 的开发技能。
+
+Vue 3 的生态系统还在不断发展，建议持续关注官方文档和社区动态，不断学习和实践。
+
+---
+
+**Vue 3 编程主要知识点梳理**
+
+*从入门到精通，全面掌握 Vue 3 核心技术*
+
+本文档涵盖了 Vue 3 的所有核心知识点，包括组合式 API、响应式系统、组件系统、路由管理、状态管理等，以及 TypeScript 支持、性能优化和工具链生态。
+
+**2025 年 2 月**
